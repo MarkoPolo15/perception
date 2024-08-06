@@ -43,7 +43,11 @@ Step 5: Running the Tests:
 3. Ensure the web browser is not already running, as the test will open a new browser window.
 
 Notes:
-1. The login process is handled once per session using fixtures to improve efficiency.
+1. The login + search process is handled once per session using fixtures to improve efficiency - The login curenttly disabled, due to authorization of given users, but logic exist , icluding the ognorance of the phone number, it can be turned on inside the fixture file (mentioned in the notes near the login fixture).
 2. The tests include navigating to the home page, performing searches, and verifying various elements on the page.
 3. Logging is used for better debugging and tracking of test progress and results.
+   
 """)
+
+Future work : 
+1. Fix login logic with a valid user
