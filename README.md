@@ -20,18 +20,18 @@ Step 4: Project Structure:
 project_root/
 │
 ├── configs/
-│   └── environment.py
+│ └── environment.py
 │
 ├── src/
-│   ├── pages/
-│   │   ├── home_page.py
-│   │   └── login.py
-│   └── utilities/
-│       └── credentials.py
+│ ├── pages/
+│ │ ├── home_page.py
+│ │ └── login.py
+│ └── utilities/
+│ └── credentials.py
 │
 ├── tests/
-│   ├── test_search_results.py
-│   └── conftest.py
+│ ├── test_search_results.py
+│ └── conftest.py
 │
 ├── requirements.txt
 └── pytest.ini
