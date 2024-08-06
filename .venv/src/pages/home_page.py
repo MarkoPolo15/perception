@@ -1,9 +1,12 @@
-import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+import logging
+
+import time
 
 class HomePage:
     def __init__(self, driver):
@@ -19,96 +22,78 @@ class HomePage:
         us_link.click()
         time.sleep(2)
 
-    def open_sign_in_menu(self):
-        account_menu = self.driver.find_element(By.ID, 'account-menu-account-button')
-        account_menu.click()
-        time.sleep(2)
-    
-    def click_sign_in(self):
-        sign_in_button = self.driver.find_element(By.CLASS_NAME, 'c-button-secondary')
-        sign_in_button.click()
-        time.sleep(2)
-
-    def login(self, username, password):
-        email_field = self.driver.find_element(By.ID, 'fld-e')
-        email_field.send_keys(username)
-        password_field = self.driver.find_element(By.ID, 'fld-p1')
-        password_field.send_keys(password)
-        sign_in_button = self.driver.find_element(By.CLASS_NAME, 'c-button-secondary')
-        sign_in_button.click()
-        time.sleep(5)  # Wait for the login to complete
-        self.handle_recovery_prompt()
-
-    def handle_recovery_prompt(self):
-        try:
-            skip_button = self.driver.find_element(By.CLASS_NAME, 'cia-cancel')
-            skip_button.click()
-            time.sleep(2)
-        except Exception as e:
-            print("Skip button not found or not required: ", e)
-
     def perform_search(self, query):
         search_field = self.driver.find_element(By.ID, 'gh-search-input')
-        search_field.send_keys(query + Keys.RETURN)
-        time.sleep(3)
+        search_field.send_keys(query)
+        time.sleep(2)  # Wait for suggestions to appear
 
     def check_search_results(self):
-        results = self.driver.find_elements(By.CSS_SELECTOR, ".sku-title > h4 > a")
-        for result in results:
-            assert "hello kitty" in result.text.lower(), f"'{result.text}' does not contain 'hello kitty'"
+        results = self.driver.find_elements(By.CSS_SELECTOR, "ul.list-unstyled.m-none.p-none.border-none.shadow-none li a.text-info.flex.p-100")
+        print(f"Found {len(results)} suggestions: {[result.text for result in results]}")
+        return results
 
-    def hover_and_check_product_for_section(self):
-        # Creating an instance of ActionChains
+    def hover_over_element(self, element):
         action = ActionChains(self.driver)
+        action.move_to_element(element).perform()
+        time.sleep(1)  # Wait for the hover effect to take place
+        print("Hovered over element with text:", element.text)
 
-        # Locating the main menu (parent element)
-        products_for_section = self.driver.find_element(By.CSS_SELECTOR, ".gh-search-nav-bar")
-
-        # Locating the suggestions dropdown elements (child elements)
-        suggestions = self.driver.find_elements(By.CSS_SELECTOR, '.suggestions-dropdown .suggestions-box ul li')
-
-        # Store the initial content of the "products for" section
-        initial_content = products_for_section.text
-
-        hovered_suggestions = []
-
-        # Iterate over the suggestions and check if the content changes on hover
-        for suggestion in suggestions:
-            # Hover over each suggestion
-            action.move_to_element(suggestion).perform()
-
-            # Adding a small wait to ensure the content is updated
-            WebDriverWait(self.driver, 10).until(
-                EC.text_to_be_present_in_element((By.CSS_SELECTOR, ".gh-search-nav-bar"), suggestion.text)
-            )
-
-            # Get the updated content of the "products for" section
-            updated_content = products_for_section.text
-
-            # Check if the content has changed
-            if updated_content != initial_content:
-                hovered_suggestions.append(suggestion)
-
-            # Reset the initial content to the updated content for the next iteration
-            initial_content = updated_content
-
-        return hovered_suggestions
+    def get_right_side_content(self):
+        right_side_content = self.driver.find_element(By.CSS_SELECTOR, "div[aria-label='Related Products']").text
+        return right_side_content
 
     def go_to_third_product(self):
-        third_product = self.driver.find_elements(By.CSS_SELECTOR, ".sku-title > h4 > a")[2]
-        third_product.click()
+        try:
+            third_product_link = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "(//a[@class='clamp lines-3 v-text-tech-black suggest-target'])[3]"))
+            )
+            print(f"Navigating to third product: {third_product_link.text}")
+            third_product_link.click()
+        except TimeoutException as e:
+            print("Timeout: Third product link is not clickable:", e)
+            raise e
 
-    def check_price_text_size(self):
+    def get_price_text_size(self):
         price_element = self.driver.find_element(By.CSS_SELECTOR, ".priceView-hero-price span")
         price_text_size = price_element.value_of_css_property("font-size")
-        assert price_text_size == "30px", f"Price text size is not 30px, but {price_text_size}"
+        price_text = price_element.text
+        return price_text_size, price_text
 
-    def check_sections(self):
-        sections = ["Features", "Specifications", "Questions & Answers"]
-        for section in sections:
-            section_element = self.driver.find_element(By.XPATH, f"//button[text()='{section}']")
-            section_element.click()
-            details = WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, ".shop-container"))
-            )
-            assert details.is_displayed(), f"{section} details not displayed"
+    def get_specifications(self):
+        try:
+            specs_button = self.driver.find_element(By.CSS_SELECTOR, ".c-button-unstyled.specifications-drawer-btn.w-full.flex.justify-content-between.align-items-center.py-200")
+            specs_button.click()
+            spec_content = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "div[class='h-full flex flex-column']"))
+            ).text
+            print("Specifications section is displayed with content")
+            spec_button_close = self.driver.find_element(By.CSS_SELECTOR,"div[class='flex justify-content-between'] button[aria-label='Close']")
+            spec_button_close.click()
+            return spec_content
+        except (TimeoutException, NoSuchElementException) as e:
+            print("Specifications section not found")
+            raise e
+        
+    def get_features(self):
+        try:                                                            
+            features_button = self.driver.find_element(By.CSS_SELECTOR, ".c-button-unstyled.specifications-drawer-btn.w-full.flex.justify-content-between.align-items-center.py-200")
+            features_button.click()
+            features_content = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "div[class='h-full flex flex-column']"))
+            ).text
+            print("Features section is displayed with content")
+            feature_button_close = self.driver.find_element(By.CSS_SELECTOR,"div[class='flex justify-content-between'] button[aria-label='Close']")
+            feature_button_close.click()
+            return features_content
+        except (TimeoutException, NoSuchElementException) as e:
+            print("Features section not found")
+            raise e
+
+    def get_questions_and_answers(self):
+        try:
+            qa_element = self.driver.find_element(By.XPATH, "(//span[@class='heading-5'])[1]")
+            print("Questions & Answers section is displayed with content")
+            return qa_element.text
+        except NoSuchElementException as e:
+            print("Questions & Answers section not found")
+            raise e

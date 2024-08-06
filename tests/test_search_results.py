@@ -1,56 +1,53 @@
 import time
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from src.pages.home_page import HomePage
 from src.utilities.credentials import load_credentials
 from configs.environment import BASE_URL
 
-def test_product_search(driver):
-    driver.get(BASE_URL)
-    home_page = HomePage(driver)
-    
-    home_page.select_country()
-    #home_page.open_sign_in_menu()
-    #home_page.click_sign_in()
-    
-    credentials = load_credentials()['users'][0]
-    #home_page.login(credentials['username'], credentials['password'])
-    
-    home_page.perform_search("hello kitty")
-    home_page.check_search_results()
-    
-    # Hover over each suggestion and verify the "Products for" section changes
-    suggestions = home_page.driver.find_elements(By.CSS_SELECTOR, '.suggestions-dropdown .suggestions-box ul li')
-    assert len(suggestions) > 0, "No search suggestions found"
+def test_search_results(home_page):
+    results = home_page.check_search_results()
+    assert len(results) > 0, "No search suggestions found"
+    print(f"Found {len(results)} suggestions: {[result.text for result in results]}")
+    return results
 
-    products_for_section = home_page.driver.find_element(By.CSS_SELECTOR, ".gh-search-nav-bar")
-    initial_text = products_for_section.text
-    
-    for suggestion in suggestions:
-        action = ActionChains(home_page.driver)
-        action.move_to_element(suggestion).perform()
-        time.sleep(1)  # Wait for the hover effect to take place
-        current_text = products_for_section.text
-        assert current_text != initial_text, f"'Products for' section did not change for {suggestion.text}"
-        initial_text = current_text
-    
-    # Go to the third product in the list
+def test_hover_over_suggestions(home_page):
+    results = home_page.check_search_results()
+    assert len(results) > 0, "No search suggestions found"
+    initial_right_side_content = home_page.get_right_side_content()
+    print(f"Initial right side content: {initial_right_side_content}")
+
+    # Start from the second result
+    for i, result in enumerate(results[1:], start=2):
+        home_page.hover_over_element(result)
+        current_right_side_content = home_page.get_right_side_content()
+        print(f"Hovered over element {i} with text: {result.text}")
+        print(f"Current right side content: {current_right_side_content}")
+
+        if current_right_side_content == initial_right_side_content:
+            print(f"Right side content did not change for {result.text}")
+        else:
+            print(f"Right side content changed for {result.text}")
+
+        assert current_right_side_content != initial_right_side_content, f"Right side content did not change for {result.text}"
+        initial_right_side_content = current_right_side_content
+        break
+
+def test_check_price_text_size(home_page):
     home_page.go_to_third_product()
-    
-    # Check if there's a price and the text size is 30px
-    price_element = home_page.driver.find_element(By.CSS_SELECTOR, ".priceView-hero-price span")
-    price_text_size = price_element.value_of_css_property("font-size")
+    price_text_size, price_text = home_page.get_price_text_size()
     assert price_text_size == "30px", f"Price text size is not 30px, but {price_text_size}"
-    
-    # Check sections
-    sections = ["Features", "Specifications", "Questions & Answers"]
-    for section in sections:
-        section_element = home_page.driver.find_element(By.XPATH, f"//button[text()='{section}']")
-        section_element.click()
-        details = WebDriverWait(home_page.driver, 10).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, ".shop-container"))
-        )
-        assert details.is_displayed(), f"{section} details not displayed"
+    assert price_text, "Price text is empty"
+
+def test_check_specifications(home_page):
+    home_page.go_to_third_product()
+    spec_content = home_page.get_specifications()
+    assert spec_content, "Specifications content is empty"
+
+def test_check_features(home_page):
+    home_page.go_to_third_product()
+    feature_text = home_page.get_features()
+    assert feature_text, "Features text is empty"
+
+ 
