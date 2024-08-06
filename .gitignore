@@ -1,0 +1,23 @@
+# Ignore virtual environment
+.venv/
+venv/
+
+# Ignore pycache
+__pycache__/
+*.pyc
+
+# Ignore configuration files
+*.cfg
+*.ini
+
+# Ignore IDE files
+.vscode/
+.idea/
+
+# Ignore other files
+*.log
+*.tmp
+.DS_Store
+
+# Ignore credentials or sensitive files
+credentials.json
